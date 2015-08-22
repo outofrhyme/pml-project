@@ -70,11 +70,10 @@ img {
 </div>
 <div id="training-model" class="section level2">
 <h2>Training Model</h2>
-<p>For this prediction, I created a random forest model from the training dataset. First, I loaded libraries and downloaded the data. I’ve suppressed this code for brevity.</p>
-<p>Next, I selected the columns to use in the model. I removed the bookkeeping columns, columns with large numbers of NAs, and non-numeric columns, to simplify the number of columns to be used for training.</p>
+<p>For this prediction, I created a random forest model from the training dataset. I chose random forest because this is a classification problem, and I felt random forests would be appropriate for predicting activity quality. First, I loaded libraries and downloaded the data. I’ve suppressed this code for brevity.</p>
+<p>Next, I selected the columns to use in the model. I removed the bookkeeping columns, columns with large numbers of NAs, and non-numeric columns, to simplify the number of columns to be used for training. The bookkeeping columns should not be used to predict as they are not regressors. The columns with large numbers of NAs do not add to the model. The non-numeric columns are mostly factor columns with broken data, e.g. DIV/0 values, and little actionable data, so they also do not make sense to include and only complicate the model. The reason there is so much data that is useful to this analysis is because there are different row types. Eliminating these columns still preserves the majority of the interesting information for the rows we will be analyzing.</p>
 <pre class="r"><code>## Import data
 all_training &lt;- read.csv('pml-training.csv')
-eval_testing &lt;- read.csv('pml-testing.csv')
 
 ## Some columns have a large number of NAs. Let's identify these columns and create a list of the other cols.
 
@@ -99,7 +98,7 @@ for (i in 1:length(cols)) {
                 final &lt;- c(final, cols[i])
         }
 }</code></pre>
-<p>Finally, I used the testing dataset to train the model. I split the testing dataset into new training and test sets for cross-validation.</p>
+<p>Finally, I used the testing dataset to train the model. I split the testing dataset into new training and test sets for cross-validation, and applied the random forests model to the new training set.</p>
 <pre class="r"><code>## Split dataset
 
 inTrain &lt;- createDataPartition(y=all_training$classe, p=0.7, list=FALSE)
@@ -115,7 +114,7 @@ modFit &lt;- randomForest(classe ~ .,method=&quot;rf&quot;,data=droplevels(train
 </div>
 <div id="out-of-sample-error" class="section level2">
 <h2>Out of Sample Error</h2>
-<p>To estimate the error, I applied my model to the test set I created from the training dataset to cross-validate the model. To determine the accuracy, I compared the predicted results to the actual outcomes.</p>
+<p>To estimate the error, I applied my model to the new test set I created from the training dataset to cross-validate the model. To determine the accuracy, I compared the predicted results to the actual outcomes.</p>
 <table>
 <thead>
 <tr class="header">
