@@ -1,0 +1,91 @@
+---
+title: "Practical Machine Learning Model: Activity Quality Prediction"
+output: html_document
+---
+
+## Objective
+
+Use activity monitor accelerometer data to predict the quality of the performed activity.
+
+## Training Model
+
+For this prediction, I created a random forest model from the training dataset. First, I loaded libraries and downloaded the data. I've suppressed this code for brevity.
+```{r results='hide', warning=FALSE, message=FALSE, echo=FALSE}
+## Load libraries
+library(caret)
+library(randomForest)
+library(stringr)
+
+## Download data
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', 'pml-training.csv', method='curl')
+
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', 'pml-testing.csv', method='curl')
+```
+
+Next, I selected the columns to use in the model. I removed the bookkeeping columns, columns with large numbers of NAs, and non-numeric columns, to simplify the number of columns to be used for training.
+
+```{r}
+## Import data
+all_training <- read.csv('pml-training.csv')
+eval_testing <- read.csv('pml-testing.csv')
+
+## Some columns have a large number of NAs. Let's identify these columns and create a list of the other cols.
+
+sum <- as.data.frame(summary(all_training))
+sum2 <- subset(sum, grepl('.*NA.*', sum$Freq))
+na_cols <- str_trim(levels(as.factor(as.character(sum2$Var2))))
+cols <- subset(colnames(all_training), !(colnames(all_training) %in% na_cols))
+
+## Remove bookkeeping columns.
+
+cols <- cols[8:93]
+
+## Remove all non-numeric columns except for classe.
+
+final <- character()
+
+for (i in 1:length(cols)) {
+        if (is.numeric(all_training[,cols[i]])) {
+                final <- c(final, cols[i])
+        }
+        else if (cols[i] == "classe") {
+                final <- c(final, cols[i])
+        }
+}
+
+```
+
+Finally, I used the testing dataset to train the model. I split the testing dataset into new training and test sets for cross-validation.
+
+```{r cache=TRUE}
+## Split dataset
+
+inTrain <- createDataPartition(y=all_training$classe, p=0.7, list=FALSE)
+training <- all_training[inTrain,]
+testing <- all_training[-inTrain,]
+
+## Set seed for reproducibility
+set.seed(1337)
+
+## Select and train model
+
+modFit <- randomForest(classe ~ .,method="rf",data=droplevels(training[,final]))
+```
+```{r echo=FALSE, eval=FALSE}
+## Code to save and load training model
+## saveRDS(modFit, file="modFit.rds")
+## modFit = readRDS("modFit.rds")
+```
+
+## Out of Sample Error
+
+To estimate the error, I applied my model to the test set I created from the training dataset to cross-validate the model. To determine the accuracy, I compared the predicted results to the actual outcomes.
+
+```{r echo=FALSE}
+library(knitr)
+predictions <- predict(modFit, newdata=testing)
+kable(table(predictions, testing$classe))
+sum(diag(table(predictions, testing$classe))) / sum(table(predictions, testing$classe))
+```
+
+Based on this cross-validation, the accuracy of the model is above 99%. So, when I apply the model to the evaluation testing set, I expect an error rate of less than 1%.
